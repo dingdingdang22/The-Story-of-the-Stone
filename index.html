@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>87版《红楼梦》人物关系图谱 · 经典永恒交互全景</title>
+  <meta name="description" content="基于87版《红楼梦》电视剧形象制作的高保真交互式人物关系图谱，支持力导向物理弹簧拉伸、节点自由拖拽、多重视图切换与人物生平手卷检索。">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <!-- 引入本地已下载的 D3.js 核心库 (完全支持离线与本地直接打开) -->
+  <script src="assets/vendor/d3.min.js"></script>
+  <!-- 预加载红楼梦全局数据集 (支持双击 file:// 零CORS运行) -->
+  <script src="data/honglou_data.js"></script>
+</head>
+<body>
+
+  <!-- 顶部导航栏 -->
+  <header class="top-header">
+    <div class="brand-section">
+      <div class="brand-seal">红</div>
+      <div>
+        <div class="brand-title">红楼梦人物关系图谱</div>
+      </div>
+      <span class="brand-badge">87版电视剧经典形象</span>
+    </div>
+
+    <!-- 预设关系视图切换器 -->
+    <nav class="view-presets">
+      <button class="preset-btn active" data-preset="core">经典核心</button>
+      <button class="preset-btn" data-preset="all">全景宗族 (123人)</button>
+      <button class="preset-btn" data-preset="twelve">金陵十二钗</button>
+      <button class="preset-btn" data-preset="four_families">四大家族</button>
+      <button class="preset-btn" data-preset="romance">大观园情缘</button>
+    </nav>
+
+    <!-- 快捷操作工具 -->
+    <div class="header-actions">
+      <!-- 搜索框 -->
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" class="search-input" placeholder="搜索人物、演员、住所..." autocomplete="off">
+        <div id="search-dropdown" class="search-dropdown"></div>
+      </div>
+
+      <!-- 关系寻径 -->
+      <button id="btn-path-finder" class="action-btn" title="探寻任意两人之间的最短关联路径">
+        <span>🧭</span> 关系寻径
+      </button>
+
+      <!-- 扩充数据 -->
+      <button id="btn-add-data" class="action-btn primary" title="扩充新角色与关系">
+        <span>➕</span> 扩充数据
+      </button>
+
+      <!-- 导出高清图片 -->
+      <button id="btn-export-img" class="action-btn" title="保存为高清图谱图片">
+        <span>📷</span> 导出图片
+      </button>
+
+      <!-- 主题切换 (深色/浅色) -->
+      <button id="btn-theme-toggle" class="action-btn" title="切换深色/浅色古典主题">
+        <span>🌓</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主视图容器 -->
+  <main class="main-container">
+
+    <!-- 侧边栏折叠按钮 (折叠时显示) -->
+    <button id="sidebar-toggle" class="sidebar-toggle-btn" style="display: none;" title="展开筛选控制面板">
+      <span>☰</span>
+    </button>
+
+    <!-- 左侧筛选控制侧边栏 -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">
+          <span>📜</span> 谱系与物理调谐
+        </span>
+        <button id="sidebar-close" class="drawer-close-btn" title="折叠侧边栏">×</button>
+      </div>
+
+      <div class="sidebar-content">
+        <!-- 层次与布局模式 -->
+        <div>
+          <div class="filter-group-title">
+            <span>层次与布局模式</span>
+          </div>
+          <div class="layout-switcher">
+            <button class="layout-opt-btn active" data-layout="concentric" title="同心圆圈层分明，尊卑长幼层层向外发散">
+              <span>🪐</span> 核心圈层
+            </button>
+            <button class="layout-opt-btn" data-layout="clans" title="荣国府、宁国府、薛家、史家等分群聚类">
+              <span>🏛️</span> 家族分区
+            </button>
+            <button class="layout-opt-btn" data-layout="free" title="无向心约束，纯弹簧斥力排布">
+              <span>🕸️</span> 自由弹性
+            </button>
+          </div>
+        </div>
+
+        <!-- 连线文字显示策略 -->
+        <div>
+          <div class="filter-group-title">
+            <span>关系连线文字</span>
+          </div>
+          <div class="layout-switcher">
+            <button class="layout-opt-btn active" data-labels="smart" title="主线核心关系显示，悬停或点击时高亮呈现，清爽不拥挤">
+              <span>💡</span> 智能精简
+            </button>
+            <button class="layout-opt-btn" data-labels="all" title="全量呈现所有187条连接文字">
+              <span>🏷️</span> 全部显示
+            </button>
+          </div>
+        </div>
+
+        <!-- 家族分类筛选 -->
+        <div>
+          <div class="filter-group-title">
+            <span>宗族家族分类</span>
+          </div>
+          <div id="clan-filter-tags" class="filter-tags"></div>
+        </div>
+
+        <!-- 关系类型筛选 -->
+        <div>
+          <div class="filter-group-title">
+            <span>纽带关系类型</span>
+          </div>
+          <div id="relation-filter-tags" class="filter-tags"></div>
+        </div>
+
+        <!-- 物理动力学调节 (拉伸弹性与斥力) -->
+        <div>
+          <div class="filter-group-title">
+            <span>动态拉伸与物理弹簧</span>
+          </div>
+          <div class="slider-container">
+            <div class="slider-label-row">
+              <span>连线弹性长度</span>
+              <span id="val-link-dist">220</span>
+            </div>
+            <input type="range" id="slider-link-dist" class="slider-input" min="100" max="380" value="220">
+          </div>
+
+          <div class="slider-container">
+            <div class="slider-label-row">
+              <span>弹簧拉伸张力</span>
+              <span id="val-tension">35</span>
+            </div>
+            <input type="range" id="slider-tension" class="slider-input" min="10" max="100" value="35">
+          </div>
+
+          <div class="slider-container">
+            <div class="slider-label-row">
+              <span>节点相互斥力</span>
+              <span id="val-charge">1600</span>
+            </div>
+            <input type="range" id="slider-charge" class="slider-input" min="600" max="3000" value="1600">
+          </div>
+        </div>
+
+        <!-- 操作说明贴士 -->
+        <div class="info-card" style="margin-top: auto;">
+          <div class="info-card-title">💡 交互手势操作指南</div>
+          <p class="info-card-text" style="font-size: 11px; line-height: 1.6;">
+            • <b>动态拉伸</b>：按住任意节点拖拽，相连纽带实时弹性伸缩；<b>松开后保持在落点位置，不会自动复位</b>。<br>
+            • <b>选中放大</b>：鼠标点击或悬停节点，头像与边框<b>平滑放大展现高清剧照</b>。<br>
+            • <b>双击节点</b>：手动钉住/释放节点（固定后显示金色图钉）。<br>
+            • <b>点击节点</b>：展开右侧生平手卷与原著判词。<br>
+            • <b>滚轮漫游</b>：画布平滑无级缩放与平移。
+          </p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 图谱可视工作区 (SVG) -->
+    <div class="graph-viewport">
+      <svg id="graph-svg"></svg>
+
+      <!-- 浮动控制工具条 -->
+      <div class="viewport-toolbar">
+        <button id="btn-zoom-in" class="tool-icon-btn" title="放大画布">+</button>
+        <button id="btn-zoom-out" class="tool-icon-btn" title="缩小画布">-</button>
+        <button id="btn-fit-view" class="tool-icon-btn" title="居中自适应全部节点">⛶</button>
+        <div class="toolbar-divider"></div>
+        <button id="btn-layout-concentric" class="tool-icon-btn active" title="🪐 核心圈层层次布局 (同心圆层层发散)">🪐</button>
+        <button id="btn-layout-clans" class="tool-icon-btn" title="🏛️ 家族分区聚类">🏛️</button>
+        <button id="btn-layout-free" class="tool-icon-btn" title="🕸️ 自由弹性漫游">🕸️</button>
+        <div class="toolbar-divider"></div>
+        <button id="btn-toggle-play" class="tool-icon-btn" title="暂停/恢复物理弹性模拟">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16"/>
+            <rect x="14" y="4" width="4" height="16"/>
+          </svg>
+        </button>
+        <button id="btn-unlock-all" class="tool-icon-btn" title="释放全部已固定的图钉节点">🔓</button>
+      </div>
+
+      <!-- 鹰眼小地图 -->
+      <div class="minimap-container">
+        <canvas id="minimap-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 右侧人物生平手卷 (Drawer) -->
+    <aside id="profile-drawer" class="profile-drawer">
+      <div class="drawer-header">
+        <button id="drawer-close" class="drawer-close-btn" title="收起生平手卷">×</button>
+        <div class="drawer-avatar-wrap">
+          <img id="drawer-avatar" class="drawer-avatar-img" src="" alt="87版角色头像">
+          <span id="drawer-actor" class="drawer-actor-badge"></span>
+        </div>
+        <h2 id="drawer-name" class="drawer-name"></h2>
+        <div class="drawer-meta-badges">
+          <span id="drawer-clan-badge" class="meta-pill"></span>
+          <span id="drawer-generation" class="meta-pill"></span>
+        </div>
+      </div>
+
+      <div class="drawer-body">
+        <!-- 身份与住所 -->
+        <div class="info-card">
+          <div class="info-card-title">🏮 身份与住所</div>
+          <p class="info-card-text">
+            <b>身份称号：</b><span id="drawer-identity"></span><br>
+            <b>大观园住址：</b><span id="drawer-residence"></span>
+          </p>
+        </div>
+
+        <!-- 判词/原著诗词 -->
+        <div class="info-card">
+          <div class="info-card-title">📖 原著判词与红楼曲词</div>
+          <div id="drawer-judgment" class="judgment-quote"></div>
+        </div>
+
+        <!-- 人物生平详述 -->
+        <div class="info-card">
+          <div class="info-card-title">🪶 人物生平与性格解析</div>
+          <p id="drawer-desc" class="info-card-text"></p>
+        </div>
+
+        <!-- 直接人物关系网络 -->
+        <div class="info-card">
+          <div class="info-card-title">🔗 谱系关联（点击飞往）</div>
+          <div id="drawer-relations-list" class="relations-list"></div>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- 模态框 1：扩充数据 (新增人物 / 新增关系 / 数据导入导出) -->
+  <div id="modal-expand-data" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">✨ 数据扩展与谱系管理</span>
+        <button class="drawer-close-btn modal-close-btn">×</button>
+      </div>
+
+      <nav class="modal-tabs">
+        <button class="modal-tab-btn active" data-tab="tab-add-char">➕ 新增人物</button>
+        <button class="modal-tab-btn" data-tab="tab-add-rel">🔗 新增关系</button>
+        <button class="modal-tab-btn" data-tab="tab-data-io">📥 导入 / 📤 导出</button>
+      </nav>
+
+      <!-- 选项卡 1：新增人物 -->
+      <form id="form-add-character" class="modal-body modal-tab-pane" style="display: flex;">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">人物姓名 *</label>
+            <input type="text" id="new-char-name" class="form-input" placeholder="如：茜雪" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">所属家族/阵营 *</label>
+            <select id="new-char-clan" class="form-select">
+              <option value="rongguo">荣国府</option>
+              <option value="ningguo">宁国府</option>
+              <option value="shi">史家</option>
+              <option value="wang">王家</option>
+              <option value="xue">薛家</option>
+              <option value="lin">姑苏林家</option>
+              <option value="servant">大观园丫鬟侍从</option>
+              <option value="external">故旧亲友与方外</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">87版饰演者</label>
+            <input type="text" id="new-char-actor" class="form-input" placeholder="如：李蔓">
+          </div>
+          <div class="form-group">
+            <label class="form-label">重要度层级</label>
+            <select id="new-char-importance" class="form-select">
+              <option value="5">核心主角 (5级 - 特大节点)</option>
+              <option value="4">重要主角 (4级 - 大节点)</option>
+              <option value="3" selected>核心配角 (3级 - 中节点)</option>
+              <option value="2">周边配角 (2级 - 常规节点)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">身份称号</label>
+            <input type="text" id="new-char-identity" class="form-input" placeholder="如：宝玉房早期大丫鬟">
+          </div>
+          <div class="form-group">
+            <label class="form-label">居住居所</label>
+            <input type="text" id="new-char-residence" class="form-input" placeholder="如：怡红院">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">87版剧照头像路径或在线URL (留空自动生成古典印章头像)</label>
+          <input type="text" id="new-char-avatar" class="form-input" placeholder="assets/avatars/角色名.jpg 或 自定义图片链接">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">原著判词 / 诗词引文 (可选)</label>
+          <textarea id="new-char-judgment" class="form-textarea" rows="2" placeholder="输入相关判词或曲词"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">人物生平详述</label>
+          <textarea id="new-char-desc" class="form-textarea" rows="3" placeholder="详细介绍该人物的生平、性格、命运转折与经典情节"></textarea>
+        </div>
+
+        <div class="modal-footer" style="padding: 10px 0 0;">
+          <button type="button" class="action-btn modal-cancel-btn">取消</button>
+          <button type="submit" class="action-btn primary">立即加入图谱</button>
+        </div>
+      </form>
+
+      <!-- 选项卡 2：新增关系 -->
+      <form id="form-add-relation" class="modal-body modal-tab-pane" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">起始人物 (Source) *</label>
+            <select id="rel-source-select" class="form-select" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">目标人物 (Target) *</label>
+            <select id="rel-target-select" class="form-select" required></select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">关系称谓 *</label>
+            <input type="text" id="new-rel-name" class="form-input" placeholder="如：知己、主仆、连襟" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">关系类型 *</label>
+            <select id="new-rel-type" class="form-select">
+              <option value="blood">宗族血亲 (红实线)</option>
+              <option value="marriage">结发姻亲 (粉实线)</option>
+              <option value="love">情缘至交 (粉虚线)</option>
+              <option value="master_servant">主仆侍奉 (蓝实线)</option>
+              <option value="friendship">知己交好 (绿实线)</option>
+              <option value="conflict">恩怨对立 (灰点线)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">关系详述与原著情节</label>
+          <textarea id="new-rel-desc" class="form-textarea" rows="3" placeholder="描述两人的关系渊源与名场面"></textarea>
+        </div>
+
+        <div class="modal-footer" style="padding: 10px 0 0;">
+          <button type="button" class="action-btn modal-cancel-btn">取消</button>
+          <button type="submit" class="action-btn primary">建立连接纽带</button>
+        </div>
+      </form>
+
+      <!-- 选项卡 3：数据导入导出 -->
+      <div id="tab-data-io" class="modal-body modal-tab-pane" style="display: none;">
+        <p class="info-card-text" style="font-size: 13px; margin-bottom: 12px;">
+          本图谱支持导出完整的结构化 JSON 数据集，方便持久化保存您所扩充的人物与关系；也支持随时导入第三方定制数据。
+        </p>
+
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+          <button id="btn-download-json" class="action-btn primary" style="flex: 1; justify-content: center;">
+            <span>📤</span> 导出当前图谱 JSON
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">📥 导入自定义 JSON 数据文件</label>
+          <input type="file" id="input-import-json" class="form-input" accept=".json">
+          <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+            需遵循 <code>honglou_data.json</code> 的标准 Schema 规范（包含 nodes 与 links）。
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框 2：关系寻径 (Shortest Path Finder) -->
+  <div id="modal-path-finder" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">🧭 红楼人物关系探寻与寻径</span>
+        <button class="drawer-close-btn modal-close-btn">×</button>
+      </div>
+
+      <form id="form-find-path" class="modal-body">
+        <p class="info-card-text" style="font-size: 12px;">
+          选择任意两位红楼梦人物，基于经典图遍历算法（BFS）计算两人之间的最短关联纽带链路，并在画布上高亮展示。
+        </p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">人物甲 (起始)</label>
+            <select id="path-source-select" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">人物乙 (终点)</label>
+            <select id="path-target-select" class="form-select"></select>
+          </div>
+        </div>
+
+        <button type="submit" class="action-btn primary" style="justify-content: center; margin-top: 6px;">
+          <span>🔍</span> 探寻最短关系链
+        </button>
+
+        <div id="path-result-box" style="display: none; margin-top: 10px;"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 核心逻辑脚本 -->
+  <script src="assets/js/graph.js"></script>
+  <script src="assets/js/pathFinder.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
