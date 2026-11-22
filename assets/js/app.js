@@ -139,6 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
       state.graph.clearSelection();
     });
 
+    // 网站品牌徽标点击：全景自适应居中漫游
+    document.querySelector('.brand-logo')?.addEventListener('click', () => {
+      state.graph.fitToView(850);
+      showToast('视角已漫游重置居中');
+    });
+
     // 浮动工具栏按钮
     document.getElementById('btn-zoom-in')?.addEventListener('click', () => state.graph.zoomIn());
     document.getElementById('btn-zoom-out')?.addEventListener('click', () => state.graph.zoomOut());

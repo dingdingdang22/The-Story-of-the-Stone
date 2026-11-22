@@ -97,6 +97,31 @@ body {
   gap: 14px;
 }
 
+/* 网站品牌专属徽标 (通灵宝玉佩饰) */
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 8px rgba(185, 28, 28, 0.45));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+}
+
+.brand-logo:hover {
+  transform: scale(1.12) translateY(-1px);
+  filter: drop-shadow(0 4px 14px rgba(212, 175, 55, 0.65)) drop-shadow(0 2px 8px rgba(197, 48, 48, 0.8));
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
 .brand-seal {
   width: 38px;
   height: 38px;
